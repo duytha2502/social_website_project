@@ -32,7 +32,6 @@ const PostForm = ({ post }: PostFormProps) => {
     const { toast } = useToast();
     const navigate = useNavigate();
 
-    // 1. Define your form.
     const form = useForm<z.infer<typeof PostValidation>>({
         resolver: zodResolver(PostValidation),
         defaultValues: {
