@@ -16,18 +16,25 @@ import FileUploader from '../shared/FileUploader';
 import { Input } from '../ui/input';
 import { PostValidation } from '@/lib/validation';
 import { Models } from 'appwrite';
-import { useCreatePost } from '@/lib/react-query/queriesAndMutations';
+import {
+    useCreatePost,
+    useUpdatePost,
+} from '@/lib/react-query/queriesAndMutations';
 import { useUserContext } from '../../../context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 type PostFormProps = {
     post?: Models.Document;
+    action: 'Create' | 'Update';
 };
 
-const PostForm = ({ post }: PostFormProps) => {
+const PostForm = ({ post, action }: PostFormProps) => {
     const { mutateAsync: createPost, isPending: isLoadingCreate } =
         useCreatePost();
+    const { mutateAsync: updatePost, isPending: isLoadingUpdate } =
+        useUpdatePost();
+
     const { user } = useUserContext();
     const { toast } = useToast();
     const navigate = useNavigate();
@@ -43,6 +50,23 @@ const PostForm = ({ post }: PostFormProps) => {
     });
 
     async function onSubmit(values: z.infer<typeof PostValidation>) {
+        if (post && action === 'Update') {
+            const updatedPost = await updatePost({
+                ...values,
+                postId: post.$id,
+                imageId: post?.imageId,
+                imageUrl: post?.imageUrl,
+            });
+
+            if (!updatedPost) {
+                toast({
+                    title: 'Please try again',
+                });
+            }
+
+            return navigate(`/posts/${post.$id}`);
+        }
+
         const newPost = await createPost({
             ...values,
             userId: user.id,
@@ -96,7 +120,7 @@ const PostForm = ({ post }: PostFormProps) => {
                             <FormControl>
                                 <FileUploader
                                     fieldChange={field.onChange}
-                                    mediaUrl={post?.image}
+                                    mediaUrl={post?.imageUrl}
                                 />
                             </FormControl>
                             <FormDescription>
@@ -161,8 +185,10 @@ const PostForm = ({ post }: PostFormProps) => {
                     <Button
                         type='submit'
                         className='shad-button_primary whitespace-nowrap'
+                        disabled={isLoadingCreate || isLoadingUpdate}
                     >
-                        Submit
+                        {isLoadingCreate || (isLoadingUpdate && 'Loading...')}
+                        {action} Post
                     </Button>
                 </div>
             </form>
